@@ -7,9 +7,11 @@ import plotly.express as px
 import streamlit as st
 
 from pulse import agent, db, health, simulator
-from pulse.config import ANTHROPIC_API_KEY, SERVICES
+from pulse.config import SERVICES
 
 STATUS_ICON = {"healthy": "🟢", "degraded": "🟡", "critical": "🔴", "no_data": "⚪"}
+
+COLORS = {"spark": "#4C78A8", "airflow": "#54A24B", "trino": "#F58518", "flink": "#E45756"}
 
 st.set_page_config(page_title="Platform Pulse", page_icon="📟", layout="wide")
 
@@ -66,11 +68,11 @@ def render_trends(conn, services: list[str], hours: int) -> None:
     frame["ts"] = pd.to_datetime(frame["ts"])
     frame["success_pct"] = frame["success_rate"] * 100
 
-    success = px.line(frame, x="ts", y="success_pct", color="service", title="Success rate (%)")
+    success = px.line(frame, x="ts", y="success_pct", color="service", color_discrete_map=COLORS, title="Success rate (%)")
     success.add_hline(y=health.SLO_SUCCESS_RATE * 100, line_dash="dash", annotation_text="SLO")
-    latency = px.line(frame, x="ts", y="p95_latency_ms", color="service", title="p95 latency (ms)")
-    queue = px.line(frame, x="ts", y="queue_depth", color="service", title="Queue depth")
-    errors = px.line(frame, x="ts", y="error_count", color="service", title="Errors per interval")
+    latency = px.line(frame, x="ts", y="p95_latency_ms", color="service", color_discrete_map=COLORS, title="p95 latency (ms)")
+    queue = px.line(frame, x="ts", y="queue_depth", color="service", color_discrete_map=COLORS, title="Queue depth")
+    errors = px.line(frame, x="ts", y="error_count", color="service", color_discrete_map=COLORS, title="Errors per interval")
 
     left, right = st.columns(2)
     left.plotly_chart(success, use_container_width=True)
@@ -121,8 +123,8 @@ def render_logs(conn, services: list[str]) -> None:
 
 
 def render_ask() -> None:
-    if not ANTHROPIC_API_KEY:
-        st.caption("ANTHROPIC_API_KEY not set: the agent runs in offline summary mode.")
+    if agent.resolve_provider() == "offline":
+        st.caption("No LLM provider configured: the agent runs in offline summary mode.")
     question = st.text_input("Ask about platform health, incidents, or runbooks")
     if st.button("Ask") and question.strip():
         with st.spinner("Thinking..."):
