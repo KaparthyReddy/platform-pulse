@@ -6,6 +6,11 @@ Telemetry is simulated: metrics, logs, and incidents for Spark, Airflow, Trino, 
 
 ## Features
 
+![Dashboard overview](docs/dashboard-overview.png)
+![Trend charts](docs/dashboard-trends.png)
+![Incident triage](docs/incidents-triage.png)
+![Ask the agent](docs/ask-agent.png)
+
 - Per-service health score (0-100) from success rate, p95 latency, and queue depth, with healthy / degraded / critical status.
 - Streamlit dashboard: status banner, service cards, trend charts with SLO line, incident table, log viewer, and an agent panel.
 - MCP server exposing health, incident, log, and runbook tools over stdio.
