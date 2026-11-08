@@ -121,7 +121,7 @@ def build_app() -> App:
                 result = agent.triage_incident(int(text.lstrip("#")))
             else:
                 result = agent.ask(text or agent.DEFAULT_QUESTION)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
             respond(text=f"Triage failed: {error}", response_type="in_channel")
             return
         respond(text=result.answer + _footer(result), response_type="in_channel")

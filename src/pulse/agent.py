@@ -140,17 +140,19 @@ async def _run_offline(session: ClientSession, question: str) -> tuple[str, list
 
 
 async def ask_async(question: str) -> AgentResult:
-    async with stdio_client(_server_params()) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            if config.ANTHROPIC_API_KEY:
-                try:
-                    answer, used = await _run_llm(session, question)
-                    return AgentResult(answer=answer, mode="llm", tools_used=used)
-                except anthropic.APIError:
-                    pass
-            answer, used = await _run_offline(session, question)
-            return AgentResult(answer=answer, mode="offline", tools_used=used)
+    async with (
+        stdio_client(_server_params()) as (read, write),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
+        if config.ANTHROPIC_API_KEY:
+            try:
+                answer, used = await _run_llm(session, question)
+                return AgentResult(answer=answer, mode="llm", tools_used=used)
+            except anthropic.APIError:
+                pass
+        answer, used = await _run_offline(session, question)
+        return AgentResult(answer=answer, mode="offline", tools_used=used)
 
 
 def ask(question: str) -> AgentResult:

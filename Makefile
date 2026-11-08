@@ -1,24 +1,23 @@
-.RECIPEPREFIX = >
 .PHONY: install seed dashboard bot mcp test lint
 
 install:
-> pip install -r requirements.txt
-> pip install -e .
+	pip install -r requirements.txt
+	pip install -e .
 
 seed:
-> python -m pulse.simulator
+	python -m pulse.simulator
 
 dashboard:
-> streamlit run src/pulse/dashboard.py
+	streamlit run src/pulse/dashboard.py
 
 bot:
-> python -m pulse.slack_bot
+	python -m pulse.slack_bot
 
 mcp:
-> python -m pulse.mcp_server
+	python -m pulse.mcp_server
 
 test:
-> pytest
+	pytest
 
 lint:
-> ruff check src tests
+	ruff check src tests
