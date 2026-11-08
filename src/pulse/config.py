@@ -17,8 +17,5 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 LLM_BASE_URL = os.getenv("PULSE_BASE_URL", "http://localhost:11434/v1")
 LLM_API_KEY = os.getenv("PULSE_API_KEY", "ollama")
 
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN", "")
-SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN", "")
-SLACK_ALERT_WEBHOOK_URL = os.getenv("SLACK_ALERT_WEBHOOK_URL", "")
 
 SERVICES = ("spark", "airflow", "trino", "flink")

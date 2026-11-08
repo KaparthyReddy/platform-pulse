@@ -1,6 +1,6 @@
 # platform-pulse
 
-Customer-experience observability for a data platform. A Streamlit dashboard, a Slack bot, and an LLM triage agent all read the same telemetry through one MCP server.
+Customer-experience observability for a data platform. A Streamlit dashboard and an LLM triage agent both read the same telemetry through one MCP server.
 
 Telemetry is simulated: metrics, logs, and incidents for Spark, Airflow, Trino, and Flink-style services. No real platform is required.
 
@@ -15,7 +15,6 @@ Telemetry is simulated: metrics, logs, and incidents for Spark, Airflow, Trino, 
 - Streamlit dashboard: status banner, service cards, trend charts with SLO line, incident table, log viewer, and an agent panel.
 - MCP server exposing health, incident, log, and runbook tools over stdio.
 - Tool-calling triage agent that checks health, reads incidents, searches runbooks, and cites the runbook it used. Falls back to a deterministic offline summary when no API key is set or the API call fails.
-- Slack bot (Socket Mode): `/platform-health`, `/incidents`, `/triage`, plus webhook alerts.
 - Keyword-ranked runbook search over markdown files in `runbooks/`.
 
 ## Layout
@@ -28,7 +27,6 @@ src/pulse/
   runbooks.py    runbook parsing and ranked search
   mcp_server.py  FastMCP server (7 tools)
   agent.py       MCP client plus LLM tool-calling loop
-  slack_bot.py   slash commands and webhook alerts
   dashboard.py   Streamlit app
 runbooks/        markdown runbooks (Services, Keywords, Symptoms, Diagnosis, Mitigation, Escalation)
 tests/           health, runbooks, simulator
@@ -55,9 +53,6 @@ make dashboard
 | `PULSE_BASE_URL` | OpenAI-compatible endpoint for `ollama` | `http://localhost:11434/v1` |
 | `ANTHROPIC_API_KEY` | Only needed for the `anthropic` provider | empty |
 | `PULSE_DB_PATH` | SQLite file | `data/pulse.db` |
-| `SLACK_BOT_TOKEN` | Bot token (`xoxb-`) for slash commands | empty |
-| `SLACK_APP_TOKEN` | App-level token (`xapp-`) for Socket Mode | empty |
-| `SLACK_ALERT_WEBHOOK_URL` | Incoming webhook for alerts | empty |
 
 ## Agent
 
@@ -76,20 +71,6 @@ python -m pulse.mcp_server
 Tools: `get_platform_health`, `get_service_health`, `list_incidents`, `get_incident`, `get_recent_logs`, `search_runbooks`, `get_runbook`.
 
 Any MCP client can use it, for example by registering the command `python -m pulse.mcp_server`.
-
-## Slack setup
-
-1. Create a Slack app and enable Socket Mode. Generate an app-level token with `connections:write` and set it as `SLACK_APP_TOKEN`.
-2. Add the `commands` bot scope, install the app, and set the bot token as `SLACK_BOT_TOKEN`.
-3. Create slash commands: `/platform-health`, `/incidents`, `/triage`.
-4. Run `make bot`.
-5. For alerts, add an incoming webhook, set `SLACK_ALERT_WEBHOOK_URL`, and run `python -m pulse.slack_bot --alert`.
-
-Usage:
-
-- `/platform-health`
-- `/incidents trino` or `/incidents all`
-- `/triage <id>` or `/triage why is trino queueing?`
 
 ## Health scoring
 

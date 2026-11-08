@@ -1,4 +1,4 @@
-.PHONY: install seed dashboard bot mcp test lint
+.PHONY: install seed dashboard mcp test lint
 
 install:
 	pip install -r requirements.txt
@@ -9,9 +9,6 @@ seed:
 
 dashboard:
 	streamlit run src/pulse/dashboard.py
-
-bot:
-	python -m pulse.slack_bot
 
 mcp:
 	python -m pulse.mcp_server

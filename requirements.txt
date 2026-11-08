@@ -1,11 +1,9 @@
 streamlit>=1.38
 plotly>=5.22
 pandas>=2.2
-slack-bolt>=1.20
 mcp>=1.2,<2
 anthropic>=0.40
 openai>=1.40
 python-dotenv>=1.0
-requests>=2.32
 pytest>=8.0
 ruff>=0.6
