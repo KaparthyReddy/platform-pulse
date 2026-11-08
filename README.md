@@ -45,8 +45,10 @@ make dashboard
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Enables the LLM agent; offline mode without it | empty |
-| `PULSE_MODEL` | Model used by the agent | `claude-sonnet-5-5` |
+| `PULSE_PROVIDER` | `ollama` (free, local), `anthropic`, `offline`, or `auto` | `auto` |
+| `PULSE_MODEL` | Model name for the chosen provider | `llama3.1:8b` / `claude-sonnet-5-5` |
+| `PULSE_BASE_URL` | OpenAI-compatible endpoint for `ollama` | `http://localhost:11434/v1` |
+| `ANTHROPIC_API_KEY` | Only needed for the `anthropic` provider | empty |
 | `PULSE_DB_PATH` | SQLite file | `data/pulse.db` |
 | `SLACK_BOT_TOKEN` | Bot token (`xoxb-`) for slash commands | empty |
 | `SLACK_APP_TOKEN` | App-level token (`xapp-`) for Socket Mode | empty |
@@ -58,7 +60,7 @@ make dashboard
 python -m pulse.agent "Why is flink unhealthy and what should I do?"
 ```
 
-The agent starts the MCP server as a subprocess, lists its tools, and loops until the model stops calling tools. Output ends with the mode (`llm` or `offline`) and the tools used.
+The agent starts the MCP server as a subprocess and lists its tools. For local models it first gathers health, incidents and the matching runbook through the MCP tools and passes that verified data to the model, which can still call tools for follow-ups. Output ends with the mode (`ollama`, `anthropic`, or `offline`) and the tools used.
 
 ## MCP server
 

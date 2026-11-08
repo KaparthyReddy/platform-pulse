@@ -18,9 +18,11 @@ from pulse import config
 
 SYSTEM_PROMPT = (
     "You are Platform Pulse, a support assistant for internal customers of a data platform "
-    "(Spark, Airflow, Trino, Flink). Ground every claim in tool results and never invent metrics. "
-    "Check platform health and incidents first. For any incident, search the runbooks, read the "
-    "best match, and cite the runbook name. Answer in under 180 words as plain Slack text: use "
+    "(Spark, Airflow, Trino, Flink). Use only facts from tool results or the provided context. "
+    "Never invent incident ids, runbook names, or metrics; health scores are out of 100. "
+    "For any incident, use the runbook from the context, or call search_runbooks and then "
+    "get_runbook on the best match. List the concrete steps from its Mitigation section and cite "
+    "the runbook by its exact name. Answer in under 180 words as plain Slack text: use "
     "*single asterisks* for bold, short bullets, and end with clear next steps. If data is "
     "missing, say so."
 )
@@ -74,6 +76,31 @@ async def _call_json(session: ClientSession, name: str, arguments: dict[str, Any
 
 def _final_text(response: Any) -> str:
     return "".join(b.text for b in response.content if b.type == "text").strip()
+
+
+async def _gather_context(session: ClientSession, question: str) -> tuple[dict[str, Any], list[str]]:
+    used: list[str] = []
+
+    async def call(name: str, arguments: dict[str, Any]) -> Any:
+        used.append(name)
+        return await _call_json(session, name, arguments)
+
+    items = await call("get_platform_health", {})
+    match = re.search(r"incident\s+#?(\d+)", question, re.IGNORECASE)
+    if match:
+        incident = await call("get_incident", {"incident_id": int(match.group(1))})
+        incidents = [] if "error" in incident else [incident]
+    else:
+        incidents = await call("list_incidents", {"active_only": True})
+
+    entries: list[dict[str, Any]] = []
+    for incident in incidents:
+        matches = await call(
+            "search_runbooks", {"query": incident["title"], "service": incident["service"]}
+        )
+        runbook = await call("get_runbook", {"name": matches[0]["name"]}) if matches else None
+        entries.append({"incident": incident, "runbook": runbook})
+    return {"platform_health": items, "incidents": entries}, used
 
 
 async def _run_anthropic(session: ClientSession, question: str) -> tuple[str, list[str]]:
@@ -130,20 +157,24 @@ async def _run_ollama(session: ClientSession, question: str) -> tuple[str, list[
         }
         for t in listed.tools
     ]
+    context, used = await _gather_context(session, question)
+    prompt = (
+        f"{question}\n\nVerified data gathered from the platform tools (authoritative):\n"
+        f"{json.dumps(context, indent=2)}"
+    )
     client = openai.AsyncOpenAI(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY)
     model = config.MODEL or DEFAULT_OLLAMA_MODEL
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": question},
+        {"role": "user", "content": prompt},
     ]
-    used: list[str] = []
 
     for _ in range(MAX_TURNS):
         response = await client.chat.completions.create(
             model=model,
             messages=messages,
             tools=tools,
-            temperature=0.2,
+            temperature=0.1,
             max_tokens=1200,
         )
         message = response.choices[0].message
@@ -184,38 +215,24 @@ async def _run_ollama(session: ClientSession, question: str) -> tuple[str, list[
 
 
 async def _run_offline(session: ClientSession, question: str) -> tuple[str, list[str]]:
-    used: list[str] = []
-
-    async def call(name: str, arguments: dict[str, Any]) -> Any:
-        used.append(name)
-        return await _call_json(session, name, arguments)
-
-    items = await call("get_platform_health", {})
-    match = re.search(r"incident\s+#?(\d+)", question, re.IGNORECASE)
-    if match:
-        incident = await call("get_incident", {"incident_id": int(match.group(1))})
-        incidents = [] if "error" in incident else [incident]
-    else:
-        incidents = await call("list_incidents", {"active_only": True})
+    context, used = await _gather_context(session, question)
 
     lines = ["*Platform health*"]
-    for item in items:
+    for item in context["platform_health"]:
         lines.append(
             f"- {item['service']}: {item['status']} (score {item['score']}, "
             f"open incidents {item['open_incidents']})"
         )
-    if not incidents:
+    if not context["incidents"]:
         lines.append("No matching incidents.")
-    for incident in incidents:
+    for entry in context["incidents"]:
+        incident = entry["incident"]
         lines.append(f"\n*{incident['severity']} {incident['service']}: {incident['title']}*")
         lines.append(incident["summary"])
-        matches = await call(
-            "search_runbooks", {"query": incident["title"], "service": incident["service"]}
-        )
-        if matches:
-            detail = await call("get_runbook", {"name": matches[0]["name"]})
-            lines.append(f"Runbook: {detail['name']}")
-            lines.append(f"Next step: {detail['mitigation'].splitlines()[0]}")
+        runbook = entry["runbook"]
+        if runbook:
+            lines.append(f"Runbook: {runbook['name']}")
+            lines.append(f"Next step: {runbook['mitigation'].splitlines()[0]}")
     lines.append("\n_Offline mode: no LLM provider reachable; showing a rule-based summary._")
     return "\n".join(lines), used
 
