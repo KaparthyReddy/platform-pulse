@@ -84,7 +84,7 @@ Usage:
 
 - `/platform-health`
 - `/incidents trino` or `/incidents all`
-- `/triage 4` or `/triage why is trino queueing?`
+- `/triage <id>` or `/triage why is trino queueing?`
 
 ## Health scoring
 
